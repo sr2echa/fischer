@@ -1,11 +1,17 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { FileText, TrendingUp, AlertTriangle, MessageSquare, Target } from "lucide-react"
-import { GlowingEffect } from "@/components/ui/glowing-effect"
+import {
+  FileText,
+  TrendingUp,
+  AlertTriangle,
+  MessageSquare,
+  Target,
+} from "lucide-react";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
-export default function GlowingEffectDemo() {
+export function GlowingEffectDemo() {
   return (
     <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2">
       <GridItem
@@ -43,24 +49,32 @@ export default function GlowingEffectDemo() {
         description="Systematic evaluation across Founders/Team, Market & Problem, Differentiation, and Business Traction/KPIs."
       />
     </ul>
-  )
+  );
 }
 
 interface GridItemProps {
-  area: string
-  icon: React.ReactNode
-  title: string
-  description: React.ReactNode
+  area: string;
+  icon: React.ReactNode;
+  title: string;
+  description: React.ReactNode;
 }
 
 const GridItem = ({ area, icon, title, description }: GridItemProps) => {
   return (
     <li className={`min-h-[14rem] list-none ${area}`}>
       <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
-        <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} />
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
         <div className="border-0.75 relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6">
           <div className="relative flex flex-1 flex-col justify-between gap-3">
-            <div className="w-fit rounded-lg border border-gray-600 bg-gray-800/50 p-2">{icon}</div>
+            <div className="w-fit rounded-lg border border-gray-600 bg-gray-800/50 p-2">
+              {icon}
+            </div>
             <div className="space-y-3">
               <h3 className="-tracking-4 pt-0.5 font-space-grotesk text-xl/[1.375rem] font-semibold text-balance text-white md:text-2xl/[1.875rem]">
                 {title}
@@ -73,5 +87,5 @@ const GridItem = ({ area, icon, title, description }: GridItemProps) => {
         </div>
       </div>
     </li>
-  )
-}
+  );
+};

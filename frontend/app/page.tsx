@@ -1,15 +1,21 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import Image from "next/image"
-import { Target, Shield, Users, FileText, BarChart3, Zap, TrendingUp, Github, ExternalLink } from "lucide-react"
-import GlowingEffectDemo from "@/components/glowing-effect-demo"
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import Image from "next/image";
+import { Github, ExternalLink } from "lucide-react";
+import {
+  GlowingEffectDemo,
+  FischerGeminiBackground,
+} from "@/components/animated";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background relative">
+      {/* Fixed Gemini background animation */}
+      <FischerGeminiBackground />
+
       <div
         className="absolute inset-0 opacity-30"
         style={{
@@ -28,11 +34,22 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image src="/images/fischer-logo.png" alt="Fischer AI" width={32} height={32} className="rounded-sm" />
-              <span className="text-xl font-space-grotesk font-medium text-foreground">Fischer AI</span>
+              <Image
+                src="/images/fischer-logo.png"
+                alt="Fischer AI"
+                width={32}
+                height={32}
+                className="rounded-sm"
+              />
+              <span className="text-xl font-space-grotesk font-medium text-foreground">
+                Fischer AI
+              </span>
             </div>
             <nav className="flex items-center gap-8">
-              <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="/dashboard"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Investor View
               </Link>
               <Button variant="outline" size="sm" asChild>
@@ -69,8 +86,9 @@ export default function LandingPage() {
               Everything you need to evaluate faster
             </h1>
             <h2 className="text-xl md:text-2xl font-space-grotesk font-light text-muted-foreground mb-12 text-balance max-w-4xl mx-auto">
-              AI-powered startup analyst platform that transforms how investors evaluate opportunities with
-              comprehensive data synthesis and intelligent insights
+              AI-powered startup analyst platform that transforms how investors
+              evaluate opportunities with comprehensive data synthesis and
+              intelligent insights
             </h2>
 
             <motion.div
@@ -82,7 +100,12 @@ export default function LandingPage() {
               <Button size="lg" asChild className="px-8 py-3">
                 <Link href="/apply">Submit Your Startup</Link>
               </Button>
-              <Button variant="outline" size="lg" asChild className="px-8 py-3 bg-transparent">
+              <Button
+                variant="outline"
+                size="lg"
+                asChild
+                className="px-8 py-3 bg-transparent"
+              >
                 <Link href="/dashboard">View Applications</Link>
               </Button>
             </motion.div>
@@ -96,18 +119,20 @@ export default function LandingPage() {
           className="py-20 border-t border-border/30"
         >
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-space-grotesk font-medium text-foreground mb-4">Built for Flow</h2>
-            <p className="text-lg text-muted-foreground">Everything you need to cut faster</p>
+            <h2 className="text-4xl font-space-grotesk font-medium text-foreground mb-4">
+              Built for Flow
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Everything you need to cut faster
+            </p>
           </div>
 
           <GlowingEffectDemo />
         </motion.div>
 
         {/* Analysis Engine Section */}
-        
 
         {/* Stats Section */}
-        
 
         {/* CTA Section */}
         <motion.div
@@ -121,14 +146,19 @@ export default function LandingPage() {
               Ready to Transform Your Investment Process?
             </h2>
             <p className="text-xl text-muted-foreground mb-12 text-balance leading-relaxed">
-              Join leading investors who use Fischer AI to make data-driven investment decisions with confidence and
-              speed.
+              Join leading investors who use Fischer AI to make data-driven
+              investment decisions with confidence and speed.
             </p>
             <div className="flex items-center justify-center gap-6">
               <Button size="lg" asChild className="px-10 py-4 text-lg">
                 <Link href="/apply">Get Started</Link>
               </Button>
-              <Button variant="outline" size="lg" asChild className="px-10 py-4 text-lg bg-transparent">
+              <Button
+                variant="outline"
+                size="lg"
+                asChild
+                className="px-10 py-4 text-lg bg-transparent"
+              >
                 <Link href="/dashboard">View Demo</Link>
               </Button>
             </div>
@@ -140,8 +170,16 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <Image src="/images/fischer-logo.png" alt="Fischer AI" width={24} height={24} className="rounded-sm" />
-              <span className="text-lg font-space-grotesk font-medium text-foreground">Fischer AI</span>
+              <Image
+                src="/images/fischer-logo.png"
+                alt="Fischer AI"
+                width={24}
+                height={24}
+                className="rounded-sm"
+              />
+              <span className="text-lg font-space-grotesk font-medium text-foreground">
+                Fischer AI
+              </span>
             </div>
 
             <div className="flex items-center gap-6">
@@ -156,11 +194,13 @@ export default function LandingPage() {
                 <ExternalLink className="w-3 h-3" />
               </Link>
 
-              <div className="text-sm text-muted-foreground">© 2024 Fischer AI. All rights reserved.</div>
+              <div className="text-sm text-muted-foreground">
+                © 2024 Fischer AI. All rights reserved.
+              </div>
             </div>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }
