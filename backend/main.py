@@ -17,7 +17,7 @@ async def root():
     html_content = """
     <html>
         <head>
-            <title>FISCHER</title>
+            <title>Fischer</title>
             <style>
                 body {
                     display: flex;
@@ -41,8 +41,8 @@ async def root():
             </style>
         </head>
         <body>
-            <h1>FISCHER</h1>
-            <p>AI ANALYST FOR STARTUP EVALUATION</p>
+            <h1>Fischer AI</h1>
+            <p>AI Analyst for Startup Evaluvation</p>
         </body>
     </html>
     """
