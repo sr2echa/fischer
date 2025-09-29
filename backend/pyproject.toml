@@ -9,4 +9,5 @@ dependencies = [
     "uvicorn[standard]>=0.22.0",
     "httpx[standard]>=0.24.0",
     "pydantic[standard]>=1.10.0",
+    "firebase-admin>=6.6.0",
 ]

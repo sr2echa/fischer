@@ -44,7 +44,10 @@ interface FormData {
   key_revenue_driver: string;
   revenue_driver_other: string;
   founder_linkedin_urls: string[];
-  documents: File[];
+  pitch_deck: File | null;
+  pitch_media: File | null;
+  founders_checklist: File | null;
+  other_pdfs: File[];
 }
 
 const STEPS = [
@@ -82,7 +85,10 @@ export default function ApplicationForm() {
     key_revenue_driver: "",
     revenue_driver_other: "",
     founder_linkedin_urls: [""],
-    documents: [],
+    pitch_deck: null,
+    pitch_media: null,
+    founders_checklist: null,
+    other_pdfs: [],
   });
 
   const [coFounders, setCoFounders] = useState<CoFounder[]>([]);
@@ -125,19 +131,39 @@ export default function ApplicationForm() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFormData((prev) => ({
-        ...prev,
-        documents: [...prev.documents, ...Array.from(e.target.files!)],
-      }));
-    }
-  };
-
-  const removeFile = (index: number) => {
+  const handleSingleFileChange = (
+    field: "pitch_deck" | "pitch_media" | "founders_checklist",
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0] ?? null;
     setFormData((prev) => ({
       ...prev,
-      documents: prev.documents.filter((_, i) => i !== index),
+      [field]: file,
+    }));
+  };
+
+  const handleOtherPdfsAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files).filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+    setFormData((prev) => ({
+      ...prev,
+      other_pdfs: [...prev.other_pdfs, ...files],
+    }));
+  };
+
+  const clearSingleFile = (
+    field: "pitch_deck" | "pitch_media" | "founders_checklist"
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: null,
+    }));
+  };
+
+  const removeOtherPdf = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      other_pdfs: prev.other_pdfs.filter((_, i) => i !== index),
     }));
   };
 
@@ -157,25 +183,26 @@ export default function ApplicationForm() {
     setIsSubmitting(true);
 
     try {
-      const payload = {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+      const payloadJson = {
         ...formData,
         founder_linkedin_urls: [
           ...formData.founder_linkedin_urls.filter((url) => url.trim()),
           ...coFounders.map((cf) => cf.linkedin).filter((url) => url.trim()),
         ],
-        documents: formData.documents.map((file) => ({
-          filename: file.name,
-          content: "",
-          content_type: file.type,
-        })),
       };
 
-      const response = await fetch("/api/applications", {
+      const form = new FormData();
+      form.append("data", JSON.stringify(payloadJson));
+      if (formData.pitch_deck) form.append("pitch_deck", formData.pitch_deck);
+      if (formData.pitch_media) form.append("pitch_media", formData.pitch_media);
+      if (formData.founders_checklist) form.append("founders_checklist", formData.founders_checklist);
+      for (const f of formData.other_pdfs) form.append("other_pdfs", f);
+
+      const response = await fetch(`${backendUrl}/applications`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        body: form,
       });
 
       if (response.ok) {
@@ -790,72 +817,169 @@ export default function ApplicationForm() {
             exit={{ opacity: 0, y: -20 }}
             className="max-w-2xl mx-auto space-y-12"
           >
-            <div className="space-y-8">
-              <Label className="text-2xl font-space-grotesk font-medium text-foreground block">
-                Upload Documents
-                <span className="text-lg text-muted-foreground/60 ml-3 font-normal">
-                  pitch deck, financial model, business plan, etc.
-                </span>
-              </Label>
-              <div className="text-center">
-                <input
-                  id="documents"
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.txt,.ppt,.pptx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+            <div className="space-y-16">
+              <div className="space-y-4">
+                <Label className="text-2xl font-space-grotesk font-medium text-foreground block">
+                  Pitch Deck (PDF)
+                </Label>
+                <div className="flex items-center gap-4">
+                  <input
+                    id="pitch_deck_input"
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => handleSingleFileChange("pitch_deck", e)}
+                    className="hidden"
+                  />
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() =>
-                      document.getElementById("documents")?.click()
-                    }
-                    className="w-full p-16 text-2xl border-2 border-dashed border-border/30 hover:border-foreground transition-colors bg-transparent rounded-3xl"
+                    onClick={() => document.getElementById("pitch_deck_input")?.click()}
+                    className="flex-1 p-6 text-lg border-2 border-dashed border-border/30 hover:border-foreground bg-transparent rounded-2xl"
                   >
-                    <Upload className="w-10 h-10 mr-6" />
-                    Click to upload files or drag and drop
+                    <Upload className="w-5 h-5 mr-3" />
+                    {formData.pitch_deck ? formData.pitch_deck.name : "Upload pitch deck (PDF)"}
                   </Button>
-                </motion.div>
+                  {formData.pitch_deck && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearSingleFile("pitch_deck")}
+                      className="text-muted-foreground hover:text-red-400"
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  )}
+                </div>
               </div>
-              <AnimatePresence>
-                {formData.documents.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4"
+
+              <div className="space-y-4">
+                <Label className="text-2xl font-space-grotesk font-medium text-foreground block">
+                  Pitch Video/Audio (MP4/MP3/MOV)
+                </Label>
+                <div className="flex items-center gap-4">
+                  <input
+                    id="pitch_media_input"
+                    type="file"
+                    accept=".mp4,.mp3,.mov"
+                    onChange={(e) => handleSingleFileChange("pitch_media", e)}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("pitch_media_input")?.click()}
+                    className="flex-1 p-6 text-lg border-2 border-dashed border-border/30 hover:border-foreground bg-transparent rounded-2xl"
                   >
-                    {formData.documents.map((file, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className="flex items-center justify-between p-6 border border-border/20 rounded-2xl bg-accent/10"
-                      >
-                        <span className="text-foreground text-lg">
-                          {file.name}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile(index)}
-                          className="text-muted-foreground hover:text-red-400"
-                        >
-                          <X className="w-5 h-5" />
-                        </Button>
-                      </motion.div>
-                    ))}
+                    <Upload className="w-5 h-5 mr-3" />
+                    {formData.pitch_media ? formData.pitch_media.name : "Upload pitch video/audio (MP4/MP3/MOV)"}
+                  </Button>
+                  {formData.pitch_media && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearSingleFile("pitch_media")}
+                      className="text-muted-foreground hover:text-red-400"
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="text-2xl font-space-grotesk font-medium text-foreground block">
+                  Founders Checklist (PDF or DOCX)
+                </Label>
+                <div className="flex items-center gap-4">
+                  <input
+                    id="founders_checklist_input"
+                    type="file"
+                    accept=".pdf,.docx"
+                    onChange={(e) => handleSingleFileChange("founders_checklist", e)}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("founders_checklist_input")?.click()}
+                    className="flex-1 p-6 text-lg border-2 border-dashed border-border/30 hover:border-foreground bg-transparent rounded-2xl"
+                  >
+                    <Upload className="w-5 h-5 mr-3" />
+                    {formData.founders_checklist ? formData.founders_checklist.name : "Upload founders checklist (PDF or DOCX)"}
+                  </Button>
+                  {formData.founders_checklist && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearSingleFile("founders_checklist")}
+                      className="text-muted-foreground hover:text-red-400"
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="text-2xl font-space-grotesk font-medium text-foreground block">
+                  Other Supporting Files (PDF only)
+                </Label>
+                <div className="text-center">
+                  <input
+                    id="other_pdfs_input"
+                    type="file"
+                    multiple
+                    accept=".pdf"
+                    onChange={handleOtherPdfsAdd}
+                    className="hidden"
+                  />
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById("other_pdfs_input")?.click()}
+                      className="w-full p-10 text-lg border-2 border-dashed border-border/30 hover:border-foreground transition-colors bg-transparent rounded-2xl"
+                    >
+                      <Upload className="w-5 h-5 mr-3" />
+                      Add PDF files
+                    </Button>
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </div>
+                <AnimatePresence>
+                  {formData.other_pdfs.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4"
+                    >
+                      {formData.other_pdfs.map((file, index) => (
+                        <motion.div
+                          key={`${file.name}-${index}`}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          className="flex items-center justify-between p-6 border border-border/20 rounded-2xl bg-accent/10"
+                        >
+                          <span className="text-foreground text-lg">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeOtherPdf(index)}
+                            className="text-muted-foreground hover:text-red-400"
+                          >
+                            <X className="w-5 h-5" />
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </motion.div>
         );

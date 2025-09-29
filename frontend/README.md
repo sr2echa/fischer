@@ -1,3 +1,12 @@
+## Environment variables
+
+Create a `.env.local` with:
+
+```
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+```
+
+Point this to your FastAPI server when deploying.
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
