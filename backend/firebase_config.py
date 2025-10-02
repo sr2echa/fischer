@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Optional
 
 import firebase_admin
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from firebase_admin import credentials, firestore, storage
 
 
@@ -28,20 +32,27 @@ def _project_root() -> Path:
 def initialize_firebase() -> None:
     """Initialize Firebase Admin SDK if not already initialized.
 
-    Prefers a `serviceAccountKey.json` file at the project root. If not found,
-    will fallback to Application Default Credentials.
+    Looks for service account key file specified in FIREBASE_SERVICE_ACCOUNT_KEY_FILE env var.
+    If not found or not specified, will fallback to Application Default Credentials.
     """
     global _initialized, db, bucket
     if _initialized:
         return
 
     root = _project_root()
-    svc_path = root / "fischer-3e391-firebase-adminsdk-fbsvc-8ae6e3cb30.json"
-
-    if svc_path.exists():
-        cred = credentials.Certificate(str(svc_path))
+    
+    # Get service account key filename from environment variable
+    service_account_filename = os.environ.get("FIREBASE_SERVICE_ACCOUNT_KEY_FILE")
+    
+    if service_account_filename:
+        svc_path = root / service_account_filename
+        if svc_path.exists():
+            cred = credentials.Certificate(str(svc_path))
+        else:
+            # Fallback to ADC if the specified service account file is not present
+            cred = credentials.ApplicationDefault()
     else:
-        # Fallback to ADC if the explicit service account file is not present
+        # Fallback to ADC if no service account file is specified
         cred = credentials.ApplicationDefault()
 
     # If you want to lock to a specific bucket, set FIREBASE_STORAGE_BUCKET env var

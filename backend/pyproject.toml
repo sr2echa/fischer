@@ -10,4 +10,7 @@ dependencies = [
     "httpx[standard]>=0.24.0",
     "pydantic[standard]>=1.10.0",
     "firebase-admin>=6.6.0",
+    "python-dotenv>=1.1.1",
+    "aiofiles>=24.1.0",
+    "google-generativeai>=0.8.5",
 ]

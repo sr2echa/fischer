@@ -3,6 +3,10 @@ import os
 from typing import Optional
 
 import firebase_admin
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from firebase_admin import credentials, firestore, storage
 
 
@@ -20,8 +24,20 @@ def initialize_firebase_if_needed() -> None:
     if creds_json:
         cred = credentials.Certificate(json.loads(creds_json))
     else:
-        # Fallback: default credentials from GOOGLE_APPLICATION_CREDENTIALS or metadata
-        cred = credentials.ApplicationDefault()
+        # Check for service account key file specified in env var
+        service_account_filename = os.environ.get("FIREBASE_SERVICE_ACCOUNT_KEY_FILE")
+        if service_account_filename:
+            # Construct path relative to current file's directory
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            service_account_path = os.path.join(current_dir, service_account_filename)
+            if os.path.exists(service_account_path):
+                cred = credentials.Certificate(service_account_path)
+            else:
+                # Fallback: default credentials from GOOGLE_APPLICATION_CREDENTIALS or metadata
+                cred = credentials.ApplicationDefault()
+        else:
+            # Fallback: default credentials from GOOGLE_APPLICATION_CREDENTIALS or metadata
+            cred = credentials.ApplicationDefault()
 
     app_options = {}
     bucket = os.environ.get("FIREBASE_STORAGE_BUCKET")
