@@ -25,6 +25,9 @@ load_dotenv()
 
 # Importing initializes Firebase (see module for details)
 from firebase_config import db  # noqa: F401
+from ai_analysis_service import AIAnalysisService
+from web_enrichment import enrich_company_context
+from rag_service import RAGService
 
 # ---------------- Utility: Non-blocking Firestore helpers ---------------- #
 
@@ -76,6 +79,21 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True
 )
+
+# Initialize AI Analysis Service
+ai_service = None
+rag_service = None
+try:
+    ai_service = AIAnalysisService()
+    print("✅ AI Analysis Service initialized successfully")
+except Exception as e:
+    print(f"⚠️ Warning: AI Analysis Service failed to initialize: {e}")
+    print("AI features will be disabled")
+try:
+    rag_service = RAGService()
+    print("✅ RAG Service initialized successfully")
+except Exception as e:
+    print(f"⚠️ Warning: RAG Service failed to initialize: {e}")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -563,6 +581,282 @@ async def get_application_status(application_id: str):
             "error": "Failed to get application status",
             "details": str(e)
         }, status_code=500)
+
+
+@app.post("/applications/{application_id}/analyze")
+async def analyze_application(application_id: str):
+    """
+    Perform AI analysis on an application.
+    
+    Args:
+        application_id: The application ID to analyze
+        
+    Returns:
+        JSON with AI analysis results
+    """
+    if not ai_service:
+        return JSONResponse({
+            "error": "AI Analysis Service not available",
+            "details": "GEMINI_API_KEY not configured or service failed to initialize"
+        }, status_code=503)
+    
+    try:
+        # Get application data from Firestore
+        doc = await _firestore_get("applications", application_id)
+        
+        if not doc.exists:
+            return JSONResponse({"error": "Application not found"}, status_code=404)
+        
+        data = doc.to_dict()
+        
+        # Check if processing is complete
+        if data.get("processing_status") != "completed":
+            return JSONResponse({
+                "error": "Application processing not complete",
+                "processing_status": data.get("processing_status", "unknown")
+            }, status_code=400)
+        
+        # Prepare documents for analysis
+        documents = []
+        for doc_meta in data.get("documents", []):
+            if doc_meta.get("extracted_content"):
+                documents.append({
+                    "field": doc_meta.get("field"),
+                    "filename": doc_meta.get("filename"),
+                    "extracted_content": doc_meta.get("extracted_content"),
+                    "content_type": doc_meta.get("content_type")
+                })
+        
+        # Run AI analysis
+        analysis = await ai_service.analyze_startup(data, documents)
+        
+        # Store analysis results in Firestore
+        analysis_data = {
+            "ai_score": analysis.ai_score,
+            "risk_level": analysis.risk_level,
+            "key_insights": analysis.key_insights,
+            "red_flags": analysis.red_flags,
+            "sector_benchmarks": analysis.sector_benchmarks,
+            "recommendations": analysis.recommendations,
+            "confidence_score": analysis.confidence_score,
+            "curation_framework": {
+                "founders_team": analysis.curation_framework.founders_team,
+                "market_problem": analysis.curation_framework.market_problem,
+                "differentiation": analysis.curation_framework.differentiation,
+                "business_traction": analysis.curation_framework.business_traction
+            },
+            "analysis_completed_at": datetime.utcnow().isoformat() + "Z",
+            "processing_time": analysis.processing_time
+        }
+        
+        await _firestore_update("applications", application_id, analysis_data)
+        
+        return JSONResponse({
+            "success": True,
+            "application_id": application_id,
+            "analysis": analysis_data
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "error": "AI analysis failed",
+            "details": str(e)
+        }, status_code=500)
+
+
+@app.post("/applications/{application_id}/chat")
+async def chat_with_application(application_id: str, request_data: dict):
+    """
+    Chat with AI about a specific application.
+    
+    Args:
+        application_id: The application ID
+        request_data: {"question": "user question"}
+        
+    Returns:
+        JSON with AI response
+    """
+    if not ai_service:
+        return JSONResponse({
+            "error": "AI Analysis Service not available",
+            "details": "GEMINI_API_KEY not configured or service failed to initialize"
+        }, status_code=503)
+    
+    try:
+        question = request_data.get("question", "")
+        if not question.strip():
+            return JSONResponse({"error": "Question is required"}, status_code=400)
+        
+        # Get application data from Firestore
+        doc = await _firestore_get("applications", application_id)
+        
+        if not doc.exists:
+            return JSONResponse({"error": "Application not found"}, status_code=404)
+        
+        data = doc.to_dict()
+        
+        # Prepare documents for chat
+        documents = []
+        for doc_meta in data.get("documents", []):
+            if doc_meta.get("extracted_content"):
+                documents.append({
+                    "field": doc_meta.get("field"),
+                    "filename": doc_meta.get("filename"),
+                    "extracted_content": doc_meta.get("extracted_content"),
+                    "content_type": doc_meta.get("content_type")
+                })
+        
+        # Retrieve RAG contexts if available
+        rag_contexts = []
+        try:
+            if rag_service:
+                rag_contexts = rag_service.retrieve(application_id, question, k=5)
+        except Exception as _:
+            rag_contexts = []
+
+        # Get AI response
+        ai_response = await ai_service.chat_with_ai(question, data, documents, rag_contexts)
+        
+        return JSONResponse({
+            "success": True,
+            "application_id": application_id,
+            "question": question,
+            "response": ai_response,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "error": "Chat failed",
+            "details": str(e)
+        }, status_code=500)
+
+
+@app.post("/applications/{application_id}/enrich")
+async def enrich_application(application_id: str):
+    """Web-enrich application context and build a RAG index."""
+    if not rag_service:
+        return JSONResponse({
+            "error": "RAG Service not available",
+            "details": "GEMINI_API_KEY not configured or service failed to initialize"
+        }, status_code=503)
+
+    try:
+        # Load application
+        doc = await _firestore_get("applications", application_id)
+        if not doc.exists:
+            return JSONResponse({"error": "Application not found"}, status_code=404)
+        data = doc.to_dict()
+
+        company = data.get("company_name") or ""
+        website = data.get("company_website") or None
+        if not company:
+            return JSONResponse({"error": "company_name missing"}, status_code=400)
+
+        # Crawl/search
+        chunks = await enrich_company_context(company, website)
+
+        # Persist simple stats on application document
+        await _firestore_update("applications", application_id, {
+            "enrichment": {
+                "sources_count": len({c.get("url") for c in chunks}),
+                "chunks_count": len(chunks),
+                "enriched_at": datetime.utcnow().isoformat() + "Z",
+            }
+        })
+
+        # Build RAG index
+        rag_service.build_index(application_id, chunks)
+
+        return JSONResponse({
+            "success": True,
+            "application_id": application_id,
+            "sources_count": len({c.get("url") for c in chunks}),
+            "chunks_count": len(chunks)
+        })
+    except Exception as e:
+        return JSONResponse({
+            "error": "Enrichment failed",
+            "details": str(e)
+        }, status_code=500)
+
+
+@app.get("/applications/{application_id}")
+async def get_application(application_id: str):
+    """
+    Get complete application data including AI analysis.
+    
+    Args:
+        application_id: The application ID
+        
+    Returns:
+        JSON with complete application data
+    """
+    try:
+        doc = await _firestore_get("applications", application_id)
+        
+        if not doc.exists:
+            return JSONResponse({"error": "Application not found"}, status_code=404)
+        
+        data = doc.to_dict()
+        
+        return JSONResponse({
+            "success": True,
+            "application": data
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "error": "Failed to get application",
+            "details": str(e)
+        }, status_code=500)
+
+
+@app.get("/applications")
+async def list_applications(limit: int = 10, offset: int = 0):
+    """
+    List all applications with optional pagination.
+    
+    Args:
+        limit: Maximum number of applications to return
+        offset: Number of applications to skip
+        
+    Returns:
+        JSON with list of applications
+    """
+    try:
+        # Get applications from Firestore
+        from google.cloud.firestore import Query
+        query = db.collection("applications").order_by("submitted_at", direction=Query.DESCENDING)
+        
+        # Apply pagination
+        if offset > 0:
+            query = query.offset(offset)
+        if limit > 0:
+            query = query.limit(limit)
+        
+        docs = query.stream()
+        applications = []
+        
+        for doc in docs:
+            app_data = doc.to_dict()
+            app_data["id"] = doc.id
+            applications.append(app_data)
+        
+        return JSONResponse({
+            "success": True,
+            "applications": applications,
+            "total": len(applications),
+            "limit": limit,
+            "offset": offset
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "error": "Failed to list applications",
+            "details": str(e)
+        }, status_code=500)
+
 
 if __name__ == "__main__":
     import uvicorn

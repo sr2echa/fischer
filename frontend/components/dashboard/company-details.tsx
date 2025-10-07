@@ -100,12 +100,14 @@ export function CompanyDetails({
   };
 
   const formatCurrency = (amount: number, currency: string) => {
+    const safeCurrency = (currency && typeof currency === "string" && currency.trim()) || "USD";
+    const safeAmount = Number.isFinite(Number(amount)) ? Number(amount) : 0;
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: currency,
+      currency: safeCurrency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(safeAmount);
   };
 
   return (
@@ -120,9 +122,9 @@ export function CompanyDetails({
             <p className="text-muted-foreground">
               {application.primary_business_model}
             </p>
-            <p className="text-sm text-muted-foreground/60 mt-1">
-              Applied: {new Date(application.submitted_at).toLocaleDateString()}
-            </p>
+              <p className="text-sm text-muted-foreground/60 mt-1">
+              Applied: {new Date(application.submitted_at || Date.now()).toLocaleDateString()}
+              </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -130,10 +132,10 @@ export function CompanyDetails({
                 variant="outline"
                 className={`${getStatusColor(application.status)} mb-2`}
               >
-                {application.status.replace("_", " ")}
+                {(application.status ?? "PENDING").replace("_", " ")}
               </Badge>
               <div className="text-2xl font-mono font-bold text-foreground">
-                {application.ai_score.toFixed(1)}
+                {Number(application.ai_score ?? 0).toFixed(1)}
               </div>
               <div className="text-sm text-muted-foreground">AI Score</div>
             </div>
@@ -302,7 +304,7 @@ export function CompanyDetails({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {application.founder_linkedin_urls.map((url, index) => (
+                    {(application.founder_linkedin_urls ?? []).map((url, index) => (
                       <div
                         key={index}
                         className="flex items-center gap-3 p-3 border border-border/30 rounded-lg"
@@ -339,9 +341,9 @@ export function CompanyDetails({
                   <CardTitle className="font-space-grotesk flex items-center justify-between">
                     Founders / Team
                     <span className="text-2xl font-mono text-foreground">
-                      {application.curation_framework?.founders_team.score.toFixed(
-                        1
-                      )}
+                      {Number(
+                        application.curation_framework?.founders_team.score ?? 0
+                      ).toFixed(1)}
                     </span>
                   </CardTitle>
                 </CardHeader>
@@ -388,9 +390,9 @@ export function CompanyDetails({
                   <CardTitle className="font-space-grotesk flex items-center justify-between">
                     Market & Problem
                     <span className="text-2xl font-mono text-foreground">
-                      {application.curation_framework?.market_problem.score.toFixed(
-                        1
-                      )}
+                      {Number(
+                        application.curation_framework?.market_problem.score ?? 0
+                      ).toFixed(1)}
                     </span>
                   </CardTitle>
                 </CardHeader>
@@ -437,9 +439,9 @@ export function CompanyDetails({
                   <CardTitle className="font-space-grotesk flex items-center justify-between">
                     Differentiation
                     <span className="text-2xl font-mono text-foreground">
-                      {application.curation_framework?.differentiation.score.toFixed(
-                        1
-                      )}
+                      {Number(
+                        application.curation_framework?.differentiation.score ?? 0
+                      ).toFixed(1)}
                     </span>
                   </CardTitle>
                 </CardHeader>
@@ -483,9 +485,9 @@ export function CompanyDetails({
                   <CardTitle className="font-space-grotesk flex items-center justify-between">
                     Business Traction / KPIs
                     <span className="text-2xl font-mono text-foreground">
-                      {application.curation_framework?.business_traction.score.toFixed(
-                        1
-                      )}
+                      {Number(
+                        application.curation_framework?.business_traction.score ?? 0
+                      ).toFixed(1)}
                     </span>
                   </CardTitle>
                 </CardHeader>
@@ -539,7 +541,7 @@ export function CompanyDetails({
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3">
-                    {application.key_insights.map((insight, index) => (
+                    {(application.key_insights ?? []).map((insight, index) => (
                       <li key={index} className="flex items-start gap-3">
                         <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
                         <span className="text-foreground">{insight}</span>
@@ -557,9 +559,9 @@ export function CompanyDetails({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {application.red_flags.length > 0 ? (
+                  {(application.red_flags?.length ?? 0) > 0 ? (
                     <ul className="space-y-3">
-                      {application.red_flags.map((flag, index) => (
+                      {(application.red_flags ?? []).map((flag, index) => (
                         <li key={index} className="flex items-start gap-3">
                           <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 flex-shrink-0"></div>
                           <span className="text-foreground">{flag}</span>
@@ -593,8 +595,8 @@ export function CompanyDetails({
                       </h4>
                       <p className="text-muted-foreground">
                         {application.company_name} is a{" "}
-                        {application.current_stage.toLowerCase()}{" "}
-                        {application.primary_business_model.toLowerCase()}{" "}
+                        {(application.current_stage ?? "").toLowerCase()}{" "}
+                        {(application.primary_business_model ?? "").toLowerCase()}{" "}
                         company seeking{" "}
                         {formatCurrency(
                           application.funding_amount_seeking,
@@ -614,7 +616,7 @@ export function CompanyDetails({
                           : application.ai_score >= 5
                           ? "moderate"
                           : "limited"}{" "}
-                        potential with a {application.risk_level.toLowerCase()}{" "}
+                        potential with a {(application.risk_level ?? "MEDIUM").toLowerCase()}{" "}
                         risk profile.
                       </p>
                     </div>

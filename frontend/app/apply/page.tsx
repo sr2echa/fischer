@@ -206,7 +206,14 @@ export default function ApplicationForm() {
       });
 
       if (response.ok) {
-        alert("Application submitted successfully!");
+        const resJson = await response.json();
+        const appId = resJson.id;
+        // trigger enrichment asynchronously (no-block)
+        try {
+          fetch(`/api/enrich/${appId}`, { method: 'POST' });
+        } catch (_) {}
+        // redirect to dashboard detail and let it poll
+        window.location.href = `/dashboard/${appId}`;
       } else {
         alert("Failed to submit application. Please try again.");
       }

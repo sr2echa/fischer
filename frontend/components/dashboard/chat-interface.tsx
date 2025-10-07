@@ -39,30 +39,51 @@ export function ChatInterface({ application }: ChatInterfaceProps) {
     };
 
     setChatMessages((prev) => [...prev, userMessage]);
+    const currentInput = chatInput;
     setChatInput("");
     setIsTyping(true);
     setIsWaitingForResponse(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Call the chat API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationId: application.id,
+          question: currentInput,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Chat request failed');
+      }
+
+      const data = await response.json();
+      
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `Based on ${
-          application.company_name
-        }'s documents and data, I can help you analyze their ${
-          chatInput.toLowerCase().includes("revenue")
-            ? "revenue model and financial projections"
-            : chatInput.toLowerCase().includes("team")
-            ? "founding team background and experience"
-            : "business model and market opportunity"
-        }. What specific aspect would you like me to dive deeper into?`,
+        content: data.response,
         timestamp: new Date(),
       };
+      
       setChatMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: "I apologize, but I'm having trouble processing your question right now. Please try again later.",
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
       setIsWaitingForResponse(false);
-    }, 1500);
+    }
   };
 
   const clearMessages = () => {

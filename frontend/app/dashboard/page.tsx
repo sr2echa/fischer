@@ -99,6 +99,7 @@ export default function InvestorDashboard() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const [isTyping, setIsTyping] = useState(false);
@@ -109,15 +110,17 @@ export default function InvestorDashboard() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const response = await fetch("/mock-applications.json");
+        const response = await fetch("/api/applications");
         if (response.ok) {
           const data = await response.json();
-          setApplications(data);
+          setApplications(data.applications || []);
         } else {
           console.error("Failed to fetch applications data");
+          setError("Failed to load applications");
         }
       } catch (error) {
         console.error("Error fetching applications:", error);
+        setError("Error loading applications");
       } finally {
         setLoading(false);
       }
@@ -169,12 +172,14 @@ export default function InvestorDashboard() {
   };
 
   const formatCurrency = (amount: number, currency: string) => {
+    const safeCurrency = (currency && typeof currency === "string" && currency.trim()) || "USD";
+    const safeAmount = Number.isFinite(Number(amount)) ? Number(amount) : 0;
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: currency,
+      currency: safeCurrency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(safeAmount);
   };
 
   const pendingApplications = applications.filter(
@@ -183,6 +188,34 @@ export default function InvestorDashboard() {
   const reviewedApplications = applications.filter(
     (app) => app.status !== "PENDING"
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">
+            <AlertTriangle className="h-12 w-12 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Error Loading Applications</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -445,12 +478,14 @@ function ApplicationCard({
   };
 
   const formatCurrency = (amount: number, currency: string) => {
+    const safeCurrency = (currency && typeof currency === "string" && currency.trim()) || "USD";
+    const safeAmount = Number.isFinite(Number(amount)) ? Number(amount) : 0;
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: currency,
+      currency: safeCurrency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(safeAmount);
   };
 
   return (
@@ -471,9 +506,9 @@ function ApplicationCard({
                   {/* Right-aligned status badge */}
                   <Badge
                     variant="outline"
-                    className={getStatusColor(application.status)}
+                    className={getStatusColor(application.status || "PENDING")}
                   >
-                    {application.status.replace("_", " ")}
+                    {(application.status ?? "PENDING").replace("_", " ")}
                   </Badge>
                   <span
                     className={`text-sm font-mono ${getRiskColor(
@@ -515,7 +550,7 @@ function ApplicationCard({
                 <div>
                   <span className="text-muted-foreground">Applied</span>
                   <p className="text-foreground">
-                    {new Date(application.submitted_at).toLocaleDateString()}
+                    {new Date(application.submitted_at || Date.now()).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -523,7 +558,7 @@ function ApplicationCard({
 
             <div className="text-right ml-6">
               <div className="text-2xl font-mono font-bold text-foreground mb-1">
-                {application.ai_score.toFixed(1)}
+                {Number(application.ai_score ?? 0).toFixed(1)}
               </div>
               <div className="text-sm text-muted-foreground">AI Score</div>
             </div>

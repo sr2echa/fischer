@@ -67,22 +67,22 @@ export default function CompanyDetailPage() {
   const router = useRouter();
   const [application, setApplication] = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    const fetchApplication = async () => {
+  const fetchApplication = async () => {
       try {
-        const response = await fetch("/mock-applications.json");
+        const response = await fetch(`/api/applications/${params.id}`);
         if (response.ok) {
           const data = await response.json();
-          const app = data.find((app: Application) => app.id === params.id);
-          if (app) {
-            setApplication(app);
+          if (data.application) {
+            setApplication(data.application);
           } else {
             // If application not found, redirect back to dashboard
             router.push("/dashboard");
           }
         } else {
-          console.error("Failed to fetch applications data");
+          console.error("Failed to fetch application data");
           router.push("/dashboard");
         }
       } catch (error) {
@@ -91,12 +91,37 @@ export default function CompanyDetailPage() {
       } finally {
         setLoading(false);
       }
-    };
+  };
 
-    if (params.id) {
+  useEffect(() => {
+    if (!params.id) return;
+    fetchApplication();
+  }, [params.id]);
+
+  // Poll for updates while processing/enriching
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
       fetchApplication();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, params.id]);
+
+  const handleEnrich = async () => {
+    if (!params.id) return;
+    setIsEnriching(true);
+    try {
+      const res = await fetch(`/api/enrich/${params.id}`, { method: 'POST' });
+      if (!res.ok) {
+        console.error('Enrichment failed');
+      } else {
+        setAutoRefresh(true);
+        fetchApplication();
+      }
+    } finally {
+      setIsEnriching(false);
     }
-  }, [params.id, router]);
+  };
 
   const updateApplicationStatus = (status: Application["status"]) => {
     if (!application) return;
@@ -197,6 +222,14 @@ export default function CompanyDetailPage() {
                 Dashboard
               </Link>
             </Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleEnrich} disabled={isEnriching}>
+                {isEnriching ? 'Enriching…' : 'Enrich'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => fetchApplication()}>
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       </header>
